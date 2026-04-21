@@ -75,10 +75,7 @@ for i in range(len(X_train)):
     else:
         print(f"Skipping: {mask_name} not found.")
 
-# Final
 train_df = pd.DataFrame(train_results)
 print("\n--- Training Set Border Irregularity Complete ---")
 print(train_df.head(10))
 
-# Save to CSV so you don't have to run it again
-# train_df.to_csv("train_border_irregularity_features.csv", index=False)
