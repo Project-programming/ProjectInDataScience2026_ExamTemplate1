@@ -4,12 +4,12 @@ import pandas as pd
 from skimage.io import imread
 from skimage import measure
 # Import training data specifically
-from split_data_in_3sets import X_train, y_train 
+from split_data_in_3sets import X_train, y_train, X_val, y_val
 from clean_the_imgs import preprocess_img
+from sklearn.preprocessing import StandardScaler
 
 
-
-#asymmetry parttttt
+#asymmetry partt
 
 def asymmetry(mask):
 
@@ -142,7 +142,8 @@ for i in range(len(X_train)):
         mask_img = imread(full_mask_path, as_gray=True)
         score = asymmetry(mask_img)
         bvalue = border_irregularity(mask_img)
-        
+        value = color_complexity_B(img_path)
+
         train_results.append({
             'img_id': file_id,
             'asymmetry_score': score,
@@ -150,6 +151,8 @@ for i in range(len(X_train)):
             'colour_complexity': value,
             'is_cancer': label
         })
+
+    
     else:
         # It's helpful to know if a mask is missing
         print(f"Skipping: {mask_name} not found.")
@@ -161,4 +164,40 @@ print("\n--- Training Set Asymmetry Complete ---")
 print(train_df.head(10))
 
 # Save to CSV so you don't have to run it again
-train_df.to_csv("features.csv", index=False)
+train_df.to_csv("features_train.csv", index=False)
+
+# looping through all validation data!!!!
+
+
+validation_results = []
+
+for i in range(len(X_val)):
+    img_path = X_val[i]
+    label = y_val[i]
+
+    file_id = os.path.splitext(os.path.basename(img_path))[0]
+    mask_path = os.path.join(mask_dir, f"{file_id}_mask.png")
+
+    if not os.path.exists(mask_path):
+        continue
+
+    mask_img = imread(mask_path, as_gray=True)
+
+    validation_results.append({
+        "img_id": file_id,
+        "asymmetry_score": asymmetry(mask_img),
+        "border_irregularity": border_irregularity(mask_img),
+        "colour_complexity": color_complexity_B(img_path),
+        "is_cancer": label
+    })
+
+print("almost there")
+
+validation_df = pd.DataFrame(validation_results)
+print("\n--- Training Set Asymmetry Complete ---")
+#to see it worked
+print(validation_df.head(10))
+
+# Save to CSV so you don't have to run it again
+validation_df.to_csv("features_validation.csv", index=False)
+print("done")
