@@ -39,10 +39,6 @@ def asymmetry(mask):
 mask_dir = "data/masks/"
 train_results = []
 
-print(f"Starting calculation for {len(X_train)} training samples...")
-
-#to make sure dataset is correct length 
-print(f"the length of the training data is: {len(X_train)}")
 
 # looping through all training data
 for i in range(len(X_train)):
