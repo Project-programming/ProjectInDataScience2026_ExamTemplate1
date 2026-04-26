@@ -7,6 +7,8 @@ from skimage import measure
 from split_data_in_3sets import X_train, y_train, X_val, y_val
 from clean_the_imgs import preprocess_img
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
 
 
 #asymmetry partt
@@ -44,7 +46,7 @@ def asymmetry(mask):
     return round(float(score), 4)
 
 # getting masks
-mask_dir = "/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/data/masks/"
+mask_dir = r"C:\Users\Andreea\Desktop\ProjectInDataScience2026_ExamTemplate1\data\masks"
 train_results = []
 
 #to make sure dataset is correct length 
@@ -201,3 +203,24 @@ print(validation_df.head(10))
 # Save to CSV so you don't have to run it again
 validation_df.to_csv("features_validation.csv", index=False)
 print("done")
+
+#BASELINE MODEL TRAINING
+feature_cols = ['asymmetry_score', 'border_irregularity', 'colour_complexity']
+X_train_feat = train_df[feature_cols].values
+y_train_feat = train_df['is_cancer'].values
+X_val_feat = validation_df[feature_cols].values
+y_val_feat = validation_df['is_cancer'].values
+
+#Scaling
+scaler = StandardScaler()
+X_train_feat = scaler.fit_transform(X_train_feat)
+X_val_feat = scaler.transform(X_val_feat)
+
+#Logistic Regression
+clf = LogisticRegression(random_state=42, max_iter=1000)
+clf.fit(X_train_feat, y_train_feat)
+
+#Evaluation on validation set
+y_pred = clf.predict(X_val_feat)
+print(f"\nValidation Accuracy: {accuracy_score(y_val_feat, y_pred):.4f}")
+print(classification_report(y_val_feat, y_pred, target_names=['Benign', 'Cancer']))
