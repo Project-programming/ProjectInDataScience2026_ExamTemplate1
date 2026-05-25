@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 
 ff = pd.read_csv(r"metadata-merged(in).csv")
+#ff = pd.read_csv(r"E:/projects/ProjectInDataScience2026_ExamTemplate1/metadata-merged(in).csv") #Victoria's path
 df = ff[ (ff["group_id"]== "G") | (ff["group_id"]=="K") | (ff["group_id"]=="E") ].copy()
 cancerous_diagnostics = ['BCC', 'MEL', 'SCC']
 df['cancer'] = df['diagnostic'].isin(cancerous_diagnostics).astype(int)
@@ -15,7 +16,7 @@ df.head(5)
 
 
 df["path"] = "/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/data/imgs/" + df["img_id"]
-
+#df["path"] =  "E:/projects/ProjectInDataScience2026_ExamTemplate1/data/imgs/" + df["img_id"]  #Victoria's path
 
 X = df["path"].values
 y = df["cancer"].values
