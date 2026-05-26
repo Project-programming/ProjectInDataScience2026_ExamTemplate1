@@ -13,7 +13,7 @@ def detect_hair(img_uint8: np.ndarray) -> np.ndarray:
 
     def blackhat_thresh(gray_img, kernel_size):
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                           (kernel_size, kernel_size))
+                                           (kernel_size, kernel_size)) 
         bh = cv2.morphologyEx(gray_img, cv2.MORPH_BLACKHAT, kernel)
         otsu_val, _ = cv2.threshold(bh, 0, 255,
                                     cv2.THRESH_BINARY + cv2.THRESH_OTSU)

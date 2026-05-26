@@ -5,48 +5,19 @@ from skimage.io import imread
 from skimage import measure
 # Import training data specifically
 from split_data_in_3sets import X_train, y_train, X_val, y_val, X_test, y_test
-from clean_the_imgs import preprocess_img
+from clean_imgs_baseline import preprocess_img
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
+from featureC_baseline import color_complexity
+from featureA_baseline import asymmetry
+from featureB_baseline import border_irregularity
 
 
-#asymmetry partt
 
-def asymmetry(mask):
-
-
-    # make sure binary mask is not empty
-    mask = (mask > 0).astype(np.uint8)
-    coords = np.argwhere(mask > 0)
-    if len(coords) == 0:
-        return 0.0
-
-    row_mid = int(np.mean(coords[:, 0]))
-    col_mid = int(np.mean(coords[:, 1]))
-
-    # Horizontal
-    upper = mask[:row_mid, :]
-    lower = mask[row_mid:, :]
-    lower_flipped = np.flip(lower, axis=0)
-    min_rows = min(upper.shape[0], lower_flipped.shape[0])
-    hori_xor = np.logical_xor(upper[-min_rows:, :], lower_flipped[:min_rows, :])
-
-    # Vertical
-    left = mask[:, :col_mid]
-    right = mask[:, col_mid:]
-
-
-    right_flipped = np.flip(right, axis=1)
-    min_cols = min(left.shape[1], right_flipped.shape[1])
-    vert_xor = np.logical_xor(left[:, -min_cols:], right_flipped[:, :min_cols])
-
-    total_pixels = np.sum(mask)
-    score = (np.sum(hori_xor) + np.sum(vert_xor)) / (2 * total_pixels)
-    return round(float(score), 4)
 
 # getting masks
-mask_dir = r"C:\Users\Andreea\Desktop\ProjectInDataScience2026_ExamTemplate1\data\masks"
+mask_dir = r"/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/data/masks"
 train_results = []
 
 #to make sure dataset is correct length 
@@ -55,58 +26,9 @@ print(f"the length of the training data is: {len(X_train)}")
 
 #borderrr irregularity
 
-def border_irregularity(mask):
-    """
-    Computes border irregularity using the Compactness Index (CI).
-
-    CI = perimeter² / (4π × area)
-    - A perfect circle gives CI = 1.0 (most regular)
-    - Higher values mean a more irregular, jagged border
-
-    Returns a score >= 1.0, rounded to 4 decimal places.
-    """
-    mask = (mask > 0).astype(np.uint8)
-
-    # Find contours using skimage
-    contours = measure.find_contours(mask, level=0.5)
-    if len(contours) == 0:
-        return 0.0
-
-    # Use the longest contour (main lesion border)
-    contour = max(contours, key=len)
-
-    # Perimeter: sum of Euclidean distances between consecutive contour points
-    diffs = np.diff(contour, axis=0)
-    perimeter = np.sum(np.sqrt((diffs ** 2).sum(axis=1)))
-
-    # Area: number of foreground pixels
-    area = np.sum(mask)
-
-    if area == 0 or perimeter == 0:
-        return 0.0
-
-    # Compactness Index
-    ci = (perimeter ** 2) / (4 * np.pi * area)
-
-    return round(float(ci), 4)
-
-
-#colour complexityyy
 
 
 #color complexity feature (Measures color variation: Uniform → benign, Many colors → melanoma)
-def color_complexity_B(path):
-   
-    img, _ = preprocess_img(path)  
-    pixels = img.reshape(-1, 3)  #makes list, Now each row = one pixel
-    std_per_channel = np.std(pixels, axis=0)  #[std_R, std_G, std_B] Measures how much colors vary
-    color_complexity = np.mean(std_per_channel)   #one nr (if big then melanoma likely)
-    return color_complexity
- 
-img, _ = preprocess_img(X_train[66])
-pixels = img.reshape(-1, 3)
-value = color_complexity_B(X_train[66])
-print(value)
 
  
 """
@@ -144,15 +66,29 @@ for i in range(len(X_train)):
         mask_img = imread(full_mask_path, as_gray=True)
         score = asymmetry(mask_img)
         bvalue = border_irregularity(mask_img)
-        value = color_complexity_B(img_path)
+        value = color_complexity(img_path)
+
+        
+        cc = color_complexity(img_path)   # returns list of 9 values
 
         train_results.append({
-            'img_id': file_id,
-            'asymmetry_score': score,
-            'border_irregularity': bvalue,
-            'colour_complexity': value,
-            'is_cancer': label
+            'img_id':            file_id,
+            'asymmetry_score':   asymmetry(mask_img),
+            'border_irregularity': border_irregularity(mask_img),
+            # 6 colour fractions
+            'frac_white':        cc[0],
+            'frac_red':          cc[1],
+            'frac_light_brown':  cc[2],
+            'frac_dark_brown':   cc[3],
+            'frac_blue_gray':    cc[4],
+            'frac_black':        cc[5],
+            # 3 summary colour stats
+            'n_distinct_colors': cc[6],
+            'color_entropy':     cc[7],
+            'off_palette_dist':  cc[8],
+            'is_cancer':         label
         })
+
 
     
     else:
@@ -189,7 +125,7 @@ for i in range(len(X_val)):
         "img_id": file_id,
         "asymmetry_score": asymmetry(mask_img),
         "border_irregularity": border_irregularity(mask_img),
-        "colour_complexity": color_complexity_B(img_path),
+        "colour_complexity": color_complexity(img_path),
         "is_cancer": label
     })
 
@@ -204,7 +140,7 @@ print(validation_df.head(10))
 validation_df.to_csv("features_validation.csv", index=False)
 print("done")
 
-<<<<<<< HEAD
+
 #BASELINE MODEL TRAINING
 feature_cols = ['asymmetry_score', 'border_irregularity', 'colour_complexity']
 X_train_feat = train_df[feature_cols].values
@@ -225,7 +161,6 @@ clf.fit(X_train_feat, y_train_feat)
 y_pred = clf.predict(X_val_feat)
 print(f"\nValidation Accuracy: {accuracy_score(y_val_feat, y_pred):.4f}")
 print(classification_report(y_val_feat, y_pred, target_names=['Benign', 'Cancer']))
-=======
 
 
 #testing data
@@ -246,13 +181,24 @@ for i in range(len(X_test)):
 
     mask_img = imread(mask_path, as_gray=True)
 
-    testing_results.append({
-        "img_id": file_id,
-        "asymmetry_score": asymmetry(mask_img),
-        "border_irregularity": border_irregularity(mask_img),
-        "colour_complexity": color_complexity_B(img_path),
-        "is_cancer": label
-    })
+    train_results.append({
+            'img_id':            file_id,
+            'asymmetry_score':   asymmetry(mask_img),
+            'border_irregularity': border_irregularity(mask_img),
+            # 6 colour fractions
+            'frac_white':        cc[0],
+            'frac_red':          cc[1],
+            'frac_light_brown':  cc[2],
+            'frac_dark_brown':   cc[3],
+            'frac_blue_gray':    cc[4],
+            'frac_black':        cc[5],
+            # 3 summary colour stats
+            'n_distinct_colors': cc[6],
+            'color_entropy':     cc[7],
+            'off_palette_dist':  cc[8],
+            'is_cancer':         label
+        })
+        
 
 
 testing_df = pd.DataFrame(testing_results)
@@ -263,4 +209,3 @@ print(testing_df.head(10))
 # Save to CSV so you don't have to run it again
 testing_df.to_csv("features_testing.csv", index=False)
 print("done")
->>>>>>> 41ef5d9218d71168a00d2067176347b71585a18e
