@@ -7,14 +7,15 @@ from skimage.io import imread
 import matplotlib.pyplot as plt
 
 
-ff = pd.read_csv(r"metadata-merged(in).csv")
+ff = pd.read_csv(r"..\metadata-merged(in).csv")
 df = ff[ (ff["group_id"]== "G") | (ff["group_id"]=="K") | (ff["group_id"]=="E") ].copy()
 cancerous_diagnostics = ['BCC', 'MEL', 'SCC']
 df['cancer'] = df['diagnostic'].isin(cancerous_diagnostics).astype(int)
 df.head(5)
 
 
-df["path"] = "/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/data/imgs/" + df["img_id"]
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+df["path"] = os.path.join(base_dir, "data", "imgs", "") + df["img_id"]
 
 
 X = df["path"].values
@@ -33,16 +34,6 @@ X_val, X_test, y_val, y_test = train_test_split(
     stratify=y_teva,
     random_state=42
 )
-
-
-# now to see if it worked
-img = imread(df["path"].iloc[0])
-
-plt.imshow(img)
-plt.title("Test image")
-plt.axis("off")
-plt.show()
-
 
 if __name__ == "__main__":
     img = imread(df["path"].iloc[0])

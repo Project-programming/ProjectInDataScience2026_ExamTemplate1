@@ -30,7 +30,7 @@ def diameter(mask, mm_per_pixel=None):
 
 
 # getting masks
-mask_dir = r"data/masks"
+mask_dir = r"C:\Users\Andreea\Desktop\ProjectInDataScience2026_ExamTemplate1\data\masks"
 train_results = []
 
 print(f"Starting calculation for {len(X_train)} training samples...")
