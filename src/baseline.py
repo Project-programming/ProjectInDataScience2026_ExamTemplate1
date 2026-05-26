@@ -9,10 +9,10 @@ from clean_imgs_baseline import preprocess_img
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
+#importing features from other files
 from featureC_baseline import color_complexity
 from featureA_baseline import asymmetry
 from featureB_baseline import border_irregularity
-
 
 
 
@@ -22,13 +22,6 @@ train_results = []
 
 #to make sure dataset is correct length 
 print(f"the length of the training data is: {len(X_train)}")
-
-
-#borderrr irregularity
-
-
-
-#color complexity feature (Measures color variation: Uniform → benign, Many colors → melanoma)
 
  
 """
@@ -120,14 +113,25 @@ for i in range(len(X_val)):
         continue
 
     mask_img = imread(mask_path, as_gray=True)
+    cc = color_complexity(img_path) 
 
     validation_results.append({
-        "img_id": file_id,
-        "asymmetry_score": asymmetry(mask_img),
-        "border_irregularity": border_irregularity(mask_img),
-        "colour_complexity": color_complexity(img_path),
-        "is_cancer": label
-    })
+            'img_id':            file_id,
+            'asymmetry_score':   asymmetry(mask_img),
+            'border_irregularity': border_irregularity(mask_img),
+            # 6 colour fractions
+            'frac_white':        cc[0],
+            'frac_red':          cc[1],
+            'frac_light_brown':  cc[2],
+            'frac_dark_brown':   cc[3],
+            'frac_blue_gray':    cc[4],
+            'frac_black':        cc[5],
+            # 3 summary colour stats
+            'n_distinct_colors': cc[6],
+            'color_entropy':     cc[7],
+            'off_palette_dist':  cc[8],
+            'is_cancer':         label
+        })
 
 #print("almost there")
 
@@ -142,7 +146,15 @@ print("done")
 
 
 #BASELINE MODEL TRAINING
-feature_cols = ['asymmetry_score', 'border_irregularity', 'colour_complexity']
+feature_cols = ['asymmetry_score', 'border_irregularity',  'frac_white', 'frac_red',
+            'frac_light_brown',
+            'frac_dark_brown',
+            'frac_blue_gray',
+            'frac_black',
+            'n_distinct_colors',
+            'color_entropy', 
+            'off_palette_dist']
+
 X_train_feat = train_df[feature_cols].values
 y_train_feat = train_df['is_cancer'].values
 X_val_feat = validation_df[feature_cols].values
@@ -167,7 +179,7 @@ print(classification_report(y_val_feat, y_pred, target_names=['Benign', 'Cancer'
 
 
 
-testing_results = []
+test_results = []
 
 for i in range(len(X_test)):
     img_path = X_test[i]
@@ -180,8 +192,10 @@ for i in range(len(X_test)):
         continue
 
     mask_img = imread(mask_path, as_gray=True)
+    # missing this line inside your test loop
+    cc = color_complexity(img_path)
 
-    train_results.append({
+    test_results.append({
             'img_id':            file_id,
             'asymmetry_score':   asymmetry(mask_img),
             'border_irregularity': border_irregularity(mask_img),
@@ -198,10 +212,10 @@ for i in range(len(X_test)):
             'off_palette_dist':  cc[8],
             'is_cancer':         label
         })
-        
 
 
-testing_df = pd.DataFrame(testing_results)
+
+testing_df = pd.DataFrame(test_results)
 print("\n--- testing Set Asymmetry Complete ---")
 #to see it worked
 print(testing_df.head(10))
