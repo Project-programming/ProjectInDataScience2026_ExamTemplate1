@@ -7,7 +7,7 @@ from skimage.io import imread
 import matplotlib.pyplot as plt
 
 
-ff = pd.read_csv(r"..\metadata-merged(in).csv")
+ff = pd.read_csv(r"/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/metadata-merged(in).csv")
 df = ff[ (ff["group_id"]== "G") | (ff["group_id"]=="K") | (ff["group_id"]=="E") ].copy()
 cancerous_diagnostics = ['BCC', 'MEL', 'SCC']
 df['cancer'] = df['diagnostic'].isin(cancerous_diagnostics).astype(int)

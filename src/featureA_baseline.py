@@ -36,7 +36,7 @@ def asymmetry(mask):
     return round(float(score), 4)
 
 # getting masks
-mask_dir = "data/masks/"
+mask_dir = "/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/data/masks"
 train_results = []
 
 

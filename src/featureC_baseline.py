@@ -32,7 +32,7 @@ def color_complexity(img_path, mask_path, n_segments=200, compactness=10, visual
     img_path  : path to the lesion image
     mask_path : path to the binary mask (white = lesion, black = background)
     """
-    img, _ , _, _ = preprocess_img(img_path)
+    img, _ , = preprocess_img(img_path)
 
     
     img_f = img.astype(float)
@@ -131,6 +131,6 @@ if __name__ == "__main__":
     print("Image:", os.path.basename(img_path))
     print("Mask: ", mask_path)
     
-    features = color_complexity(img_path, mask_path, visualize=True)
+    features = color_complexity(img_path, mask_path, n_segments=200, compactness=10, visualize=True)
     print("\nFull output list:", features)
     print("Number of features:", len(features))  

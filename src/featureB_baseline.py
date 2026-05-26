@@ -44,7 +44,7 @@ def border_irregularity(mask):
 
 
 # Getting masks
-mask_dir = "data/masks/"
+mask_dir = "/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/data/masks"
 train_results = []
 
 print(f"Starting calculation for {len(X_train)} training samples...")
