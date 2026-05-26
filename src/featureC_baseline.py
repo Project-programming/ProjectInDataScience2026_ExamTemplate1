@@ -1,9 +1,14 @@
 #color complexity feature (Measures color variation: Uniform → benign, Many colors → melanoma)
 import numpy as np
+import os
+import cv2
 import matplotlib.pyplot as plt
 from skimage.segmentation import slic
 from skimage.color import label2rgb
 from scipy.spatial.distance import cdist
+from skimage.io import imread
+from skimage.transform import resize
+from skimage import morphology
 from clean_imgs_baseline import preprocess_img
 from split_data_in_3sets import X_train
 
@@ -20,60 +25,83 @@ SKIN_COLORS = {
 COLOR_NAMES  = list(SKIN_COLORS.keys())
 COLOR_MATRIX = np.array(list(SKIN_COLORS.values()), dtype=float)
 
+def color_complexity(img_path, mask_path, n_segments=200, compactness=10, visualize=False):
+    """
+    Parameters
+    ----------
+    img_path  : path to the lesion image
+    mask_path : path to the binary mask (white = lesion, black = background)
+    """
+    img, _ , _, _ = preprocess_img(img_path)
 
-def color_complexity(path, n_segments=200, compactness=10, visualize=False):
-
-    img, _ = preprocess_img(path)
     
-    # Ensure image is in 0-255 range for comparison with Kasmi palette
     img_f = img.astype(float)
     if img_f.max() <= 1.0:
         img_f = img_f * 255.0
+    img_u8 = img_f.astype(np.uint8)
 
-    segments = slic(img, n_segments=n_segments, compactness=compactness, start_label=0)
+    
+    mask = imread(mask_path)
+    if mask.ndim == 3:
+        mask = mask[:, :, 0]  # take first channel if RGB
+    mask = mask > 127          # boolean: True = lesion pixel
+    from skimage.transform import resize as sk_resize
+    mask = sk_resize(mask.astype(float), img_u8.shape[:2],
+                     anti_aliasing=False) > 0.5
+
+    #SLIC superpixels on full image
+    segments = slic(img_u8, n_segments=n_segments, compactness=compactness, start_label=0)
     n_sp = segments.max() + 1
 
-    sp_means = np.zeros((n_sp, 3))
+    
+    sp_means   = []
+    valid_sids = []
     for sid in range(n_sp):
-        sp_means[sid] = img_f[segments == sid].mean(axis=0)
+        sp_pixels_mask = (segments == sid) & mask   
+        if sp_pixels_mask.sum() < 5:                
+            continue
+        sp_means.append(img_f[sp_pixels_mask].mean(axis=0))
+        valid_sids.append(sid)
 
+    sp_means = np.array(sp_means)
+    n_valid  = len(sp_means)
 
-    dists     = cdist(sp_means, COLOR_MATRIX)
-    nearest   = dists.argmin(axis=1)
+    
+    dists = cdist(sp_means, COLOR_MATRIX)
+    nearest = dists.argmin(axis=1)
     min_dists = dists.min(axis=1)
 
-    fracs       = np.bincount(nearest, minlength=6) / n_sp
-    n_colors    = float((fracs > 0).sum())
-    p           = fracs[fracs > 0]
-    entropy     = float(-np.sum(p * np.log(p + 1e-12)))
+    fracs = np.bincount(nearest, minlength=6) / n_valid
+    n_colors = float((fracs > 0).sum())
+    p = fracs[fracs > 0]
+    entropy = float(-np.sum(p * np.log(p + 1e-12)))
     off_palette = float(min_dists.mean())
 
-    features = list(fracs) + [n_colors, entropy, off_palette]
-    print("Full output list:", [round(float(x), 4) for x in features])
-
+    features = [float(x) for x in fracs] + [n_colors, entropy, off_palette]
 
     if visualize:
-        #this part only runs in this file 
-        # Panel 1: original cleaned image
-        # Panel 2: each superpixel filled with its average color
-        # Panel 3: bar chart showing fraction of each skin color
-        overlay = label2rgb(segments, img, kind='avg', bg_label=-1)
+        img_masked = img_f.copy()
+        img_masked[~mask] = 255   
+
+        overlay = label2rgb(segments, img_u8, kind='avg', bg_label=-1)
+        overlay_masked = overlay.copy()
+        overlay_masked[~mask] = 255
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
-        axes[0].imshow(img)
-        axes[0].set_title("Cleaned Image")
+        axes[0].imshow(img_masked.astype(np.uint8))
+        axes[0].set_title("Lesion Only (masked)")
         axes[0].axis('off')
 
-        axes[1].imshow(overlay)
-        axes[1].set_title(f"SLIC Superpixels (n≈{n_segments})")
+        axes[1].imshow(overlay_masked.astype(np.uint8))
+        axes[1].set_title(f"SLIC Superpixels — lesion only")
         axes[1].axis('off')
 
         axes[2].bar(COLOR_NAMES, fracs,
                     color=["#C5BCF9","#761511","#A35210",
                            "#872C05","#716C8B","#291F1E"])
         axes[2].set_ylabel("Fraction of superpixels")
-        axes[2].set_title("Skin-color distribution")
+        axes[2].set_title("Skin-color distribution (lesion only)")
         axes[2].set_ylim(0, 1)
 
         plt.tight_layout()
@@ -90,8 +118,19 @@ def color_complexity(path, n_segments=200, compactness=10, visualize=False):
     return features
 
 
-# This part only runs in this file, not when you import the function somewhere
+def get_mask_path(img_path):
+    filename = os.path.basename(img_path)          
+    name, ext = os.path.splitext(filename)         
+    mask_filename = f"{name}_mask{ext}"            
+    return os.path.join("data", "masks", mask_filename)
+
+
 if __name__ == "__main__":
-    features = color_complexity(X_train[66], visualize=True)
+    img_path  = X_train[10]
+    mask_path = get_mask_path(img_path)
+    print("Image:", os.path.basename(img_path))
+    print("Mask: ", mask_path)
+    
+    features = color_complexity(img_path, mask_path, visualize=True)
     print("\nFull output list:", features)
-    print("Number of features:", len(features))
+    print("Number of features:", len(features))  
