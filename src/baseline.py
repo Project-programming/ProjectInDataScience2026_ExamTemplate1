@@ -5,11 +5,14 @@ from skimage.io import imread
 from skimage import measure
 # Import training data specifically
 from split_data_in_3sets import X_train, y_train, X_val, y_val, X_test, y_test
-from clean_the_imgs import preprocess_img
+from clean_imgs_baseline import preprocess_img
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
-
+from sklearn.tree import DecisionTreeClassifier
+import matplotlib.pyplot as plt
+import joblib
+from sklearn.metrics import roc_auc_score, confusion_matrix, ConfusionMatrixDisplay
 
 #asymmetry partt
 
@@ -204,7 +207,6 @@ print(validation_df.head(10))
 validation_df.to_csv("features_validation.csv", index=False)
 print("done")
 
-<<<<<<< HEAD
 #BASELINE MODEL TRAINING
 feature_cols = ['asymmetry_score', 'border_irregularity', 'colour_complexity']
 X_train_feat = train_df[feature_cols].values
@@ -225,7 +227,29 @@ clf.fit(X_train_feat, y_train_feat)
 y_pred = clf.predict(X_val_feat)
 print(f"\nValidation Accuracy: {accuracy_score(y_val_feat, y_pred):.4f}")
 print(classification_report(y_val_feat, y_pred, target_names=['Benign', 'Cancer']))
-=======
+
+# Decision tree, save confusion matrix and metrics
+
+dt_model = DecisionTreeClassifier(random_state=42)
+dt_model.fit(X_train_feat, y_train_feat)
+
+y_pred_dt = dt_model.predict(X_val_feat)
+y_prob_dt = dt_model.predict_proba(X_val_feat)[:, 1]
+
+print("--- Decision Tree ---")
+print(classification_report(y_val_feat, y_pred_dt, target_names=['Benign', 'Cancer']))
+print(f"AUC: {roc_auc_score(y_val_feat, y_prob_dt):.4f}")
+
+cm_dt = confusion_matrix(y_val_feat, y_pred_dt)
+disp_dt = ConfusionMatrixDisplay(confusion_matrix=cm_dt, display_labels=["Benign", "Cancer"])
+disp_dt.plot()
+plt.title("Baseline Decision Tree Confusion Matrix")
+plt.savefig("baseline_dt_confusion_matrix.png")
+plt.show()
+
+joblib.dump(dt_model, "baseline_decision_tree.pkl")
+
+
 
 
 #testing data
@@ -263,4 +287,4 @@ print(testing_df.head(10))
 # Save to CSV so you don't have to run it again
 testing_df.to_csv("features_testing.csv", index=False)
 print("done")
->>>>>>> 41ef5d9218d71168a00d2067176347b71585a18e
+
