@@ -5,25 +5,19 @@ import joblib
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import cv2
 
 from skimage.io import imread
 from scipy.spatial.distance import cdist
+import cv2
 
-# ── Data split ────────────────────────────────────────────────────────────────
 from split_data_in_3sets import X_train, y_train, X_val, y_val, X_test, y_test
-
-# ── Extended cleaner ──────────────────────────────────────────────────────────
 from clean_imgs_extenB import preprocess_img, detect_hair
-
-# ── Baseline ABC features ─────────────────────────────────────────────────────
 from featureA_baseline import asymmetry
 from featureB_baseline import border_irregularity
 from featureC_baseline import color_complexity
 from featureD import diameter
 from feature_hair_shortcut import hair_coverage
 
-# ── sklearn ───────────────────────────────────────────────────────────────────
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -36,83 +30,138 @@ from sklearn.metrics import (
 
 np.random.seed(1907)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. FEATURE EXTRACTION
-# ─────────────────────────────────────────────────────────────────────────────
-
 mask_dir = r"C:\Users\Администратор\Documents\GitHub\ProjectInDataScience2026_ExamTemplate1\data\masks"
 
-def extract_features(img_paths, labels, split_name):
-    results = []
-    print(f"\n── Extracting: {split_name} ({len(img_paths)} images) ──")
+train_results = []
+print(f"the length of the training data is: {len(X_train)}")
 
-    for i, (img_path, label) in enumerate(zip(img_paths, labels)):
-        file_id   = os.path.splitext(os.path.basename(img_path))[0]
-        mask_path = os.path.join(mask_dir, f"{file_id}_mask.png")
+for i in range(len(X_train)):
+    img_path = X_train[i]
+    label    = y_train[i]
+    file_id  = os.path.splitext(os.path.basename(img_path))[0]
+    mask_path = os.path.join(mask_dir, f"{file_id}_mask.png")
 
-        if not os.path.exists(mask_path):
-            print(f"  Skipping {file_id}: mask not found.")
-            continue
+    if not os.path.exists(mask_path):
+        print(f"Skipping: {file_id}_mask.png not found.")
+        continue
 
-        # Extended preprocessing
-        img_clean, _, _, _ = preprocess_img(img_path)
+    mask_img = imread(mask_path, as_gray=True)
+    cc = color_complexity(img_path, mask_path)
 
-        # Load mask
-        mask_img = imread(mask_path, as_gray=True)
+    train_results.append({
+        'img_id':              file_id,
+        'asymmetry_score':     asymmetry(mask_img),
+        'border_irregularity': border_irregularity(mask_img),
+        'frac_white':          cc[0],
+        'frac_red':            cc[1],
+        'frac_light_brown':    cc[2],
+        'frac_dark_brown':     cc[3],
+        'frac_blue_gray':      cc[4],
+        'frac_black':          cc[5],
+        'n_distinct_colors':   cc[6],
+        'color_entropy':       cc[7],
+        'off_palette_dist':    cc[8],
+        'diameter_px':         diameter(mask_img),
+        'hair_coverage':       hair_coverage(img_path),
+        'is_cancer':           label,
+    })
 
-        # A: Asymmetry
-        asym = asymmetry(mask_img)
+    if (i + 1) % 10 == 0:
+        print(f"  train: {i + 1}/{len(X_train)} done")
 
-        # B: Border irregularity
-        border = border_irregularity(mask_img)
+train_df = pd.DataFrame(train_results)
+train_df.to_csv("features_extended_train.csv", index=False)
+print(f"Saved features_extended_train.csv ({len(train_df)} rows)")
 
-        # C: Colour complexity (entropy summary value, index 7)
-        cc = color_complexity(img_path, mask_path)
-        colour_entropy = cc[7]
+validation_results = []
 
-        # D: Diameter
-        diam = diameter(mask_img)
+for i in range(len(X_val)):
+    img_path = X_val[i]
+    label    = y_val[i]
+    file_id  = os.path.splitext(os.path.basename(img_path))[0]
+    mask_path = os.path.join(mask_dir, f"{file_id}_mask.png")
 
-        # E: Hair coverage
-        hair_cov = hair_coverage(img_path)
+    if not os.path.exists(mask_path):
+        continue
 
-        results.append({
-            "img_id":              file_id,
-            "asymmetry_score":     asym,
-            "border_irregularity": border,
-            "colour_complexity":   colour_entropy,
-            "diameter_px":         diam,
-            "hair_coverage":       hair_cov,
-            "is_cancer":           label,
-        })
+    mask_img = imread(mask_path, as_gray=True)
+    cc = color_complexity(img_path, mask_path)
 
-        if (i + 1) % 50 == 0:
-            print(f"  {i + 1}/{len(img_paths)} done")
+    validation_results.append({
+        'img_id':              file_id,
+        'asymmetry_score':     asymmetry(mask_img),
+        'border_irregularity': border_irregularity(mask_img),
+        'frac_white':          cc[0],
+        'frac_red':            cc[1],
+        'frac_light_brown':    cc[2],
+        'frac_dark_brown':     cc[3],
+        'frac_blue_gray':      cc[4],
+        'frac_black':          cc[5],
+        'n_distinct_colors':   cc[6],
+        'color_entropy':       cc[7],
+        'off_palette_dist':    cc[8],
+        'diameter_px':         diameter(mask_img),
+        'hair_coverage':       hair_coverage(img_path),
+        'is_cancer':           label,
+    })
 
-    df = pd.DataFrame(results)
-    csv_name = f"features_extended_{split_name}.csv"
-    df.to_csv(csv_name, index=False)
-    print(f"  Saved {csv_name}  ({len(df)} rows)")
-    return df
+    if (i + 1) % 10 == 0:
+        print(f"  val: {i + 1}/{len(X_val)} done")
 
+validation_df = pd.DataFrame(validation_results)
+validation_df.to_csv("features_extended_validation.csv", index=False)
+print(f"Saved features_extended_validation.csv ({len(validation_df)} rows)")
 
-train_df = extract_features(X_train, y_train, "train")
-val_df   = extract_features(X_val,   y_val,   "validation")
-test_df  = extract_features(X_test,  y_test,  "testing")
+testing_results = []
 
+for i in range(len(X_test)):
+    img_path = X_test[i]
+    label    = y_test[i]
+    file_id  = os.path.splitext(os.path.basename(img_path))[0]
+    mask_path = os.path.join(mask_dir, f"{file_id}_mask.png")
+
+    if not os.path.exists(mask_path):
+        continue
+
+    mask_img = imread(mask_path, as_gray=True)
+    cc = color_complexity(img_path, mask_path)
+
+    testing_results.append({
+        'img_id':              file_id,
+        'asymmetry_score':     asymmetry(mask_img),
+        'border_irregularity': border_irregularity(mask_img),
+        'frac_white':          cc[0],
+        'frac_red':            cc[1],
+        'frac_light_brown':    cc[2],
+        'frac_dark_brown':     cc[3],
+        'frac_blue_gray':      cc[4],
+        'frac_black':          cc[5],
+        'n_distinct_colors':   cc[6],
+        'color_entropy':       cc[7],
+        'off_palette_dist':    cc[8],
+        'diameter_px':         diameter(mask_img),
+        'hair_coverage':       hair_coverage(img_path),
+        'is_cancer':           label,
+    })
+
+    if (i + 1) % 10 == 0:
+        print(f"  test: {i + 1}/{len(X_test)} done")
+
+testing_df = pd.DataFrame(testing_results)
+testing_df.to_csv("features_extended_testing.csv", index=False)
+print(f"Saved features_extended_testing.csv ({len(testing_df)} rows)")
 
 feature_cols = [
-    "asymmetry_score",
-    "border_irregularity",
-    "colour_complexity",
-    "diameter_px",
-    "hair_coverage",
+    'asymmetry_score', 'border_irregularity',
+    'frac_white', 'frac_red', 'frac_light_brown', 'frac_dark_brown',
+    'frac_blue_gray', 'frac_black', 'n_distinct_colors',
+    'color_entropy', 'off_palette_dist',
+    'diameter_px', 'hair_coverage',
 ]
 
-x_train = train_df[feature_cols].values;  y_train_arr = train_df["is_cancer"].values
-x_val   = val_df[feature_cols].values;    y_val_arr   = val_df["is_cancer"].values
-x_test  = test_df[feature_cols].values;   y_test_arr  = test_df["is_cancer"].values
+x_train = train_df[feature_cols].values;      y_train_arr = train_df['is_cancer'].values
+x_val   = validation_df[feature_cols].values; y_val_arr   = validation_df['is_cancer'].values
+x_test  = testing_df[feature_cols].values;    y_test_arr  = testing_df['is_cancer'].values
 
 
 scaler    = StandardScaler()
@@ -121,14 +170,12 @@ x_val_s   = scaler.transform(x_val)
 x_test_s  = scaler.transform(x_test)
 joblib.dump(scaler, "extended_baseline_scaler.pkl")
 
-
 decision_tree = DecisionTreeClassifier(random_state=1907)
 decision_tree.fit(x_train_s, y_train_arr)
 print("\nDecision Tree  — validation accuracy:",
       round(decision_tree.score(x_val_s, y_val_arr), 4))
 
-
-print("\n── Hyperparameter search ──────────────────────────────────")
+print("\n Hyperparameter search")
 print(f"{'n_estimators':>12}  {'max_depth':>9}  {'val_acc':>8}  {'val_auc':>8}")
 
 search_results = []
@@ -145,41 +192,39 @@ for n_est in [10, 50, 100, 200]:
 
 
 random_forest = RandomForestClassifier(
-    n_estimators=10,   # number of trees
-    max_depth=None,    # complexity of each tree (None = fully grown)
+    n_estimators=10,
+    max_depth=None,
     random_state=1907,
 )
 random_forest.fit(x_train_s, y_train_arr)
 print("\nRandom Forest  — validation accuracy:",
       round(random_forest.score(x_val_s, y_val_arr), 4))
 
-
 y_pred_dt = decision_tree.predict(x_val_s)
 y_prob_dt = decision_tree.predict_proba(x_val_s)[:, 1]
 y_pred_rf = random_forest.predict(x_val_s)
 y_prob_rf = random_forest.predict_proba(x_val_s)[:, 1]
 
-print("\n Decision Tree (Validation)")
+print("\n--- Decision Tree (Validation) ---")
 print(classification_report(y_val_arr, y_pred_dt, target_names=["Benign", "Cancer"]))
 print(f"AUC: {roc_auc_score(y_val_arr, y_prob_dt):.4f}")
 
-print("\n Random Forest (Validation)")
+print("\n--- Random Forest (Validation) ---")
 print(classification_report(y_val_arr, y_pred_rf, target_names=["Benign", "Cancer"]))
 print(f"AUC: {roc_auc_score(y_val_arr, y_prob_rf):.4f}")
 
 y_pred_rf_test = random_forest.predict(x_test_s)
 y_prob_rf_test = random_forest.predict_proba(x_test_s)[:, 1]
 
-print("\n Random Forest (Test Set)")
+print("\n--- Random Forest (Test Set) ---")
 print(classification_report(y_test_arr, y_pred_rf_test, target_names=["Benign", "Cancer"]))
 print(f"AUC: {roc_auc_score(y_test_arr, y_prob_rf_test):.4f}")
 
-print("\n Feature Importances")
+print("\n--- Feature Importances ---")
 for name, imp in zip(feature_cols, random_forest.feature_importances_):
     print(f"  {name:<25} {imp:.4f}")
 
 
-# Confusion matrices
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 ConfusionMatrixDisplay(confusion_matrix(y_val_arr, y_pred_dt),
                        display_labels=["Benign", "Cancer"]).plot(ax=axes[0], colorbar=False)
@@ -196,25 +241,21 @@ plt.tight_layout()
 plt.savefig("extended_baseline_confusion_matrices.png", dpi=150)
 print("\nSaved: extended_baseline_confusion_matrices.png")
 
-# Feature importances
-plt.figure(figsize=(7, 4))
-colours = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B2"]
-bars = plt.barh(feature_cols, random_forest.feature_importances_, color=colours)
+plt.figure(figsize=(8, 6))
+bars = plt.barh(feature_cols, random_forest.feature_importances_)
 plt.bar_label(bars, fmt="%.3f", padding=4)
 plt.xlabel("Importance")
 plt.title("Random Forest — Feature Importances (Extended Baseline)")
-plt.xlim(0, max(random_forest.feature_importances_) * 1.25)
+plt.xlim(0, max(random_forest.feature_importances_) * 1.3)
 plt.tight_layout()
 plt.savefig("extended_baseline_feature_importances.png", dpi=150)
 print("Saved: extended_baseline_feature_importances.png")
 
-# Hyperparameter heatmaps
 results_df    = pd.DataFrame(search_results)
 depths_labels = ["1", "3", "5", "None"]
 n_ests        = [10, 50, 100, 200]
 acc_grid      = results_df["val_acc"].values.reshape(4, 4)
 auc_grid      = results_df["val_auc"].values.reshape(4, 4)
-
 fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 for ax, grid, title in zip(axes, [acc_grid, auc_grid],
                             ["Validation Accuracy", "Validation AUC"]):
@@ -225,8 +266,7 @@ for ax, grid, title in zip(axes, [acc_grid, auc_grid],
     ax.set_title(title); plt.colorbar(im, ax=ax)
     for i in range(4):
         for j in range(4):
-            ax.text(j, i, f"{grid[i,j]:.3f}", ha="center", va="center",
-                    fontsize=9,
+            ax.text(j, i, f"{grid[i,j]:.3f}", ha="center", va="center", fontsize=9,
                     color="black" if grid[i,j] < grid.max()-0.03 else "white")
 plt.suptitle("Hyperparameter Search — Extended Baseline", fontweight="bold")
 plt.tight_layout()
