@@ -6,6 +6,7 @@ import os
 import numpy as np
 from skimage.io import imread
 from clean_imgs_extenB import detect_hair
+from split_data_in_3sets import X_train
 
 def hair_coverage(path):
     img = imread(path)
