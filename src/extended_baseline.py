@@ -37,15 +37,15 @@ print(f"Gender value counts:\n{merged_df['gender'].value_counts()}")
 print(f"Age stats:\n{merged_df['age'].describe()}")
 
 # ── Step 3: Load model + scaler, generate predictions ────────────────────────
-scaler = joblib.load("extended_scaler.pkl")
-model  = joblib.load("extended_random_forest.pkl")
+scaler = joblib.load("/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/extended_baseline_scaler.pkl")
+model  = joblib.load("/Users/juliak/Desktop/ProjectInDataScience2026_ExamTemplate1/extended_baseline_random_forest.pkl")
 
 feature_cols = [
     'asymmetry_score', 'border_irregularity',
     'frac_white', 'frac_red', 'frac_light_brown',
     'frac_dark_brown', 'frac_blue_gray', 'frac_black',
     'n_distinct_colors', 'color_entropy', 'off_palette_dist',
-    'diameter', 'hair_coverage'
+    'diameter_px', 'hair_coverage'
 ]
 # Keep only columns that actually exist in the CSV
 feature_cols = [c for c in feature_cols if c in merged_df.columns]
