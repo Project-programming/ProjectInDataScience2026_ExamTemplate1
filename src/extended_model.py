@@ -22,7 +22,19 @@ train_df = pd.read_csv("features_train.csv")
 val_df   = pd.read_csv("features_validation.csv")
 test_df  = pd.read_csv("features_testing.csv")
  
-feature_cols = ["asymmetry_score", "border_irregularity", "colour_complexity"]
+feature_cols = [
+    "asymmetry_score",
+    "border_irregularity",
+    "frac_white",
+    "frac_red",
+    "frac_light_brown",
+    "frac_dark_brown",
+    "frac_blue_gray",
+    "frac_black",
+    "n_distinct_colors",
+    "color_entropy",
+    "off_palette_dist",
+]
  
 x_train = train_df[feature_cols].values
 y_train = train_df["is_cancer"].values
