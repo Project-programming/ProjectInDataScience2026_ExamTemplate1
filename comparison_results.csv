@@ -1,0 +1,3 @@
+model,accuracy,auc,precision,recall,f1
+"Baseline – Decision Tree  (features: asymmetry_score, border_irregularity, frac_white, frac_red, frac_light_brown, frac_dark_brown, frac_blue_gray, frac_black, n_distinct_colors, color_entropy, off_palette_dist)",0.5472,0.5499,0.5294,0.6923,0.6
+"Extended Baseline – Random Forest  (features: asymmetry_score, border_irregularity, frac_white, frac_red, frac_light_brown, frac_dark_brown, frac_blue_gray, frac_black, n_distinct_colors, color_entropy, off_palette_dist, diameter_px, hair_coverage)",0.5283,0.5256,0.5238,0.4231,0.4681
